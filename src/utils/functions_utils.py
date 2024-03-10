@@ -71,7 +71,7 @@ def get_model_path_list(base_dir):
                 model_lists.append(os.path.join(root, _file))
 
     model_lists = sorted(model_lists,
-                         key=lambda x: (x.split('/')[-3], int(x.split('/')[-2].split('-')[-1])))
+                         key=lambda x: (x.split('\\')[-3], int(x.split('\\')[-2].split('-')[-1])))
 
     return model_lists
 

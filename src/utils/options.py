@@ -18,13 +18,13 @@ class Args:
         parser.add_argument('--output_dir', default='./out/',
                             help='the output dir for model checkpoints')
 
-        parser.add_argument('--bert_dir', default='../bert/torch_roberta_wwm',
+        parser.add_argument('--bert_dir', default='bert/torch_roberta_wwm',
                             help='bert dir for ernie / roberta-wwm / uer')
 
         parser.add_argument('--bert_type', default='roberta_wwm',
                             help='roberta_wwm / ernie_1 / uer_large')
 
-        parser.add_argument('--task_type', default='crf',
+        parser.add_argument('--task_type', default='span',
                             help='crf / span / mrc')
 
         parser.add_argument('--loss_type', default='ls_ce',
@@ -47,7 +47,7 @@ class Args:
 
         parser.add_argument('--max_seq_len', default=512, type=int)
 
-        parser.add_argument('--eval_batch_size', default=64, type=int)
+        parser.add_argument('--eval_batch_size', default=4, type=int)
 
         parser.add_argument('--swa_start', default=3, type=int,
                             help='the epoch when swa start')
@@ -74,7 +74,7 @@ class Args:
 
         parser.add_argument('--adam_epsilon', default=1e-8, type=float)
 
-        parser.add_argument('--train_batch_size', default=24, type=int)
+        parser.add_argument('--train_batch_size', default=4, type=int)
 
         parser.add_argument('--eval_model', default=True, action='store_true',
                             help='whether to eval model after training')

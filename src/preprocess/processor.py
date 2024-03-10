@@ -355,53 +355,58 @@ def convert_crf_example(ex_idx, example: InputExample, tokenizer: BertTokenizer,
 
 
 def convert_span_example(ex_idx, example: InputExample, tokenizer: BertTokenizer,
-                         max_seq_len, ent2id):
-    set_type = example.set_type
-    raw_text = example.text
-    entities = example.labels
-    pseudo = example.pseudo
+                         max_seq_len, ent2id,mode = "train"):
+    if  mode != "train":
+        tokens = fine_grade_tokenize(example, tokenizer)
+        start_ids, end_ids = None, None
+        pseudo = 0
+    else:
+        set_type = example.set_type
+        raw_text = example.text
+        entities = example.labels
+        pseudo = example.pseudo
 
-    tokens = fine_grade_tokenize(raw_text, tokenizer)
-    assert len(tokens) == len(raw_text)
+        tokens = fine_grade_tokenize(raw_text, tokenizer)
+        assert len(tokens) == len(raw_text)
 
-    callback_labels = {x: [] for x in ENTITY_TYPES}
+        callback_labels = {x: [] for x in ENTITY_TYPES}
 
-    for _label in entities:
-        callback_labels[_label[0]].append((_label[1], _label[2]))
+        for _label in entities:
+            callback_labels[_label[0]].append((_label[1], _label[2]))
 
-    callback_info = (raw_text, callback_labels,)
+        callback_info = (raw_text, callback_labels,)
 
-    start_ids, end_ids = None, None
+        start_ids, end_ids = None, None
 
-    if set_type == 'train':
-        start_ids = [0] * len(tokens)
-        end_ids = [0] * len(tokens)
+        if set_type == 'train':
+            start_ids = [0] * len(tokens)
+            end_ids = [0] * len(tokens)
 
-        for _ent in entities:
+            for _ent in entities:
 
-            ent_type = ent2id[_ent[0]]
-            ent_start = _ent[-1]
-            ent_end = ent_start + len(_ent[1]) - 1
+                ent_type = ent2id[_ent[0]]
+                ent_start = _ent[-1]
+                ent_end = ent_start + len(_ent[1]) - 1
 
-            start_ids[ent_start] = ent_type
-            end_ids[ent_end] = ent_type
+                start_ids[ent_start] = ent_type
+                end_ids[ent_end] = ent_type
 
-        if len(start_ids) > max_seq_len - 2:
-            start_ids = start_ids[:max_seq_len - 2]
-            end_ids = end_ids[:max_seq_len - 2]
+            if len(start_ids) > max_seq_len - 2:
+                start_ids = start_ids[:max_seq_len - 2]
+                end_ids = end_ids[:max_seq_len - 2]
 
-        start_ids = [0] + start_ids + [0]
-        end_ids = [0] + end_ids + [0]
+            start_ids = [0] + start_ids + [0]
+            end_ids = [0] + end_ids + [0]
 
-        # pad
-        if len(start_ids) < max_seq_len:
-            pad_length = max_seq_len - len(start_ids)
+            # pad
+            if len(start_ids) < max_seq_len:
+                pad_length = max_seq_len - len(start_ids)
 
-            start_ids = start_ids + [0] * pad_length  # CLS SEP PAD label都为O
-            end_ids = end_ids + [0] * pad_length
+                start_ids = start_ids + [0] * pad_length  # CLS SEP PAD label都为O
+                end_ids = end_ids + [0] * pad_length
 
-        assert len(start_ids) == max_seq_len
-        assert len(end_ids) == max_seq_len
+            assert len(start_ids) == max_seq_len
+            assert len(end_ids) == max_seq_len
 
     encode_dict = tokenizer.encode_plus(text=tokens,
                                         max_length=max_seq_len,
@@ -430,7 +435,8 @@ def convert_span_example(ex_idx, example: InputExample, tokenizer: BertTokenizer
                           start_ids=start_ids,
                           end_ids=end_ids,
                           pseudo=pseudo)
-
+    if mode != "train":
+        return feature, None
     return feature, callback_info
 
 def convert_mrc_example(ex_idx, example: InputExample, tokenizer: BertTokenizer,
@@ -570,7 +576,7 @@ def convert_mrc_example(ex_idx, example: InputExample, tokenizer: BertTokenizer,
 
 
 
-def convert_examples_to_features(task_type, examples, max_seq_len, bert_dir, ent2id):
+def convert_examples_to_features(task_type, examples, max_seq_len, bert_dir, ent2id,mode="train"):
     assert task_type in ['crf', 'span', 'mrc']
 
     tokenizer = BertTokenizer(os.path.join(bert_dir, 'vocab.txt'))
@@ -606,7 +612,8 @@ def convert_examples_to_features(task_type, examples, max_seq_len, bert_dir, ent
                 example=example,
                 max_seq_len=max_seq_len,
                 ent2id=ent2id,
-                tokenizer=tokenizer
+                tokenizer=tokenizer,
+                mode=mode
             )
 
         if feature is None:
@@ -622,7 +629,8 @@ def convert_examples_to_features(task_type, examples, max_seq_len, bert_dir, ent
     logger.info(f'Build {len(features)} features')
 
     out = (features, )
-
+    if mode != "train":
+        return features,None
     if not len(callback_info):
         return out
 

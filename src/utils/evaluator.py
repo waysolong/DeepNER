@@ -92,7 +92,7 @@ def span_decode(start_logits, end_logits, raw_text, id2ent):
         for j, e_type in enumerate(end_pred[i:]):
             if s_type == e_type:
                 tmp_ent = raw_text[i:i + j + 1]
-                predict_entities[id2ent[s_type]].append((tmp_ent, i))
+                predict_entities[id2ent[s_type]].append((tmp_ent, (i, i + j + 1)))
                 break
 
     return predict_entities
@@ -185,8 +185,12 @@ def crf_evaluation(model, dev_info, device, ent2id):
     return metric_str, mirco_metrics[2]
 
 
-def span_evaluation(model, dev_info, device, ent2id):
-    dev_loader, (dev_callback_info, type_weight) = dev_info
+def span_evaluation(model, dev_info, device, ent2id,mode="mul"):
+    if mode=="one":
+        dev_loader, text = dev_info
+        dev_callback_info = [dev_info]
+    else:
+        dev_loader, (dev_callback_info, type_weight) = dev_info
 
     start_logits, end_logits = None, None
 
@@ -203,7 +207,7 @@ def span_evaluation(model, dev_info, device, ent2id):
             start_logits = np.append(start_logits, tmp_start_logits, axis=0)
             end_logits = np.append(end_logits, tmp_end_logits, axis=0)
 
-    assert len(start_logits) == len(end_logits) == len(dev_callback_info)
+    # assert len(start_logits) == len(end_logits) == len(dev_callback_info)
 
     role_metric = np.zeros([13, 3])
 
@@ -214,7 +218,9 @@ def span_evaluation(model, dev_info, device, ent2id):
     for tmp_start_logits, tmp_end_logits, tmp_callback \
             in zip(start_logits, end_logits, dev_callback_info):
 
-        text, gt_entities = tmp_callback
+        text_, gt_entities = tmp_callback
+        if mode!="one":
+            text = text_
 
         tmp_start_logits = tmp_start_logits[1:1 + len(text)]
         tmp_end_logits = tmp_end_logits[1:1 + len(text)]
@@ -224,9 +230,10 @@ def span_evaluation(model, dev_info, device, ent2id):
         for idx, _type in enumerate(ENTITY_TYPES):
             if _type not in pred_entities:
                 pred_entities[_type] = []
-
-            role_metric[idx] += calculate_metric(gt_entities[_type], pred_entities[_type])
-
+            if mode!="one":
+                role_metric[idx] += calculate_metric(gt_entities[_type], pred_entities[_type])
+    if mode=="one":
+        return pred_entities, None
     for idx, _type in enumerate(ENTITY_TYPES):
         temp_metric = get_p_r_f(role_metric[idx][0], role_metric[idx][1], role_metric[idx][2])
 
